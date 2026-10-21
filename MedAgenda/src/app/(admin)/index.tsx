@@ -7,3 +7,4 @@ export default function AdminInicio() {
     </View>
   );
 }
+// usuario@exemplo.com senha123

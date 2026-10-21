@@ -7,3 +7,4 @@ export default function ClienteInicio() {
     </View>
   );
 }
+// isabela@exemplo.com Senha12345
