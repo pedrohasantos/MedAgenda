@@ -50,3 +50,40 @@ export async function listarProfissionaisAdmin() {
   if (error) throw error;
   return data;
 }
+
+export type ConsultaAdmin = {
+  id: number;
+  inicio: string;
+  fim: string;
+  status: string;
+  observacoes: string | null;
+  cliente: { nome: string; email: string | null } | null;
+  profissional: { nome: string; foto_path: string | null } | null;
+  consultorio: { nome: string } | null;
+};
+
+export async function listarConsultasAdmin(): Promise<ConsultaAdmin[]> {
+  const { data, error } = await supabase
+    .from('consulta')
+    .select(`
+      id, inicio, fim, status, observacoes,
+      cliente ( nome, email ),
+      profissional ( nome, foto_path ),
+      consultorio ( nome )
+    `)
+    .order('inicio', { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  return data as unknown as ConsultaAdmin[];
+}
+
+export async function confirmarConsulta(id: number) {
+  const { data, error } = await supabase
+    .from('consulta')
+    .update({ status: 'confirmada' })
+    .eq('id', id)
+    .eq('status', 'agendada')
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('A consulta não está mais pendente.');
+}

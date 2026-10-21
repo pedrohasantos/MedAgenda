@@ -13,6 +13,20 @@ export async function listarConsultorios() {
   return data;
 }
 
+export async function listarProfissionaisDaUnidade(consultorioId: number) {
+  const { data, error } = await supabase
+    .from('profissional')
+    .select(`
+      id, nome, crm_numero, crm_uf, foto_path,
+      profissional_especialidade ( especialidade ( id, nome ) ),
+      profissional_consultorio!inner ( consultorio_id )
+    `)
+    .eq('profissional_consultorio.consultorio_id', consultorioId)
+    .order('nome');
+  if (error) throw error;
+  return data;
+}
+
 export async function listarProfissionais(especialidadeId: number, consultorioId: number) {
   const { data, error } = await supabase
     .from('profissional')

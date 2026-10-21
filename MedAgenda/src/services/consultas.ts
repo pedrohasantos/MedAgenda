@@ -42,11 +42,25 @@ export async function cancelarConsulta(id: number) {
   if (error) throw error;
 }
 
-export async function minhasConsultas() {
+export type Consulta = {
+  id: number;
+  inicio: string;
+  fim: string;
+  status: string;
+  observacoes: string | null;
+  profissional: { nome: string; foto_path: string | null } | null;
+  consultorio: { nome: string; endereco: string | null } | null;
+};
+
+export async function minhasConsultas(): Promise<Consulta[]> {
   const { data, error } = await supabase
     .from('consulta')
-    .select('*, profissional(nome), consultorio(nome)')
+    .select(`
+      id, inicio, fim, status, observacoes,
+      profissional ( nome, foto_path ),
+      consultorio ( nome, endereco )
+    `)
     .order('inicio', { ascending: true });
   if (error) throw error;
-  return data; // a RLS já filtra: cliente vê só as suas, admin vê todas
+  return data as unknown as Consulta[];
 }
