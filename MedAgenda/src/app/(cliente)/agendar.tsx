@@ -4,6 +4,7 @@ import { Chip } from '../../components/Chip';
 import { FotoSegura } from '../../components/FotoSegura';
 import { listarConsultorios, listarProfissionaisDaUnidade } from '../../services/catalogo';
 import { agendarConsulta, diasAtendimento, horariosDisponiveis } from '../../services/consultas';
+import { oferecerCalendario } from '../../services/calendario';
 
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -139,6 +140,7 @@ export default function Agendar() {
   function confirmar() {
     if (!unidade || !profissional || !data || !horario) return;
     const especialidade = profissional.profissional_especialidade[0]?.especialidade;
+    const fim = horarios.find((h) => h.inicio === horario)?.fim ?? horario;
 
     Alert.alert(
       'Confirmar consulta',
@@ -150,13 +152,26 @@ export default function Agendar() {
           onPress: async () => {
             try {
               setEnviando(true);
-              await agendarConsulta({
+              const consultaId = await agendarConsulta({
                 profissionalId: profissional.id,
                 consultorioId: unidade.id,
                 inicio: horario,
                 especialidadeId: especialidade?.id,
               });
-              Alert.alert('Consulta agendada!', 'Você pode acompanhá-la na aba Início.');
+
+              const evento = {
+                consultaId,
+                titulo: `Consulta - ${profissional.nome}`,
+                inicio: horario,
+                fim,
+                local: unidade.endereco ?? unidade.nome,
+                notas: `Unidade: ${unidade.nome}\nProfissional: ${profissional.nome}\nAgendada pelo MedAgenda`,
+              };
+
+              Alert.alert('Consulta agendada!', 'Deseja adicionar ao seu calendário?', [
+                { text: 'Agora não', style: 'cancel' },
+                { text: 'Adicionar', onPress: () => oferecerCalendario(evento) },
+              ]);
               reiniciar();
             } catch (e: any) {
               Alert.alert('Não foi possível agendar', e.message);

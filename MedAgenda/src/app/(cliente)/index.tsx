@@ -5,6 +5,8 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { FotoSegura } from '../../components/FotoSegura';
 import { Consulta, cancelarConsulta, minhasConsultas } from '../../services/consultas';
+import { BotaoCalendario } from '../../components/BotaoCalendario';
+import { removerDoAparelho } from '../../services/calendario';
 
 const FUSO = 'America/Sao_Paulo';
 const ATIVAS = ['agendada', 'confirmada'];
@@ -46,24 +48,31 @@ export default function ClienteInicio() {
   const [cancelandoId, setCancelandoId] = useState<number | null>(null);
 
   const carregar = useCallback(async (puxando = false) => {
-    try {
-      if (puxando) setAtualizando(true);
-      setConsultas(await minhasConsultas());
-    } catch (e: any) {
-      Alert.alert('Erro ao carregar consultas', e.message);
-    } finally {
-      setCarregando(false);
-      setAtualizando(false);
-    }
-  }, []);
+  console.log('carregar: início');
+  try {
+    if (puxando) setAtualizando(true);
 
-  // recarrega toda vez que a aba ganha foco (ex.: depois de agendar)
+    const lista = await minhasConsultas();
+    console.log('carregar: recebeu', lista.length);
+    setConsultas(lista);
+
+    lista
+      .filter((c) => c.status === 'cancelada')
+      .forEach((c) => removerDoAparelho(c.id));
+  } catch (e: any) {
+    console.log('carregar: erro', e?.message);
+    Alert.alert('Erro ao carregar consultas', e.message);
+  } finally {
+    console.log('carregar: fim');
+    setCarregando(false);
+    setAtualizando(false);
+  }
+}, []);
   useFocusEffect(
-    useCallback(() => {
-      carregar();
-    }, [carregar])
-  );
-
+  useCallback(() => {
+    carregar();
+  }, [carregar])
+);
   const agora = Date.now();
   const proximas = consultas
     .filter((c) => ATIVAS.includes(c.status) && new Date(c.fim).getTime() > agora)
@@ -179,7 +188,18 @@ export default function ClienteInicio() {
               {!!c.observacoes && (
                 <Text style={{ color: '#666', fontSize: 12 }}>Obs.: {c.observacoes}</Text>
               )}
-
+              {podeCancelar && (
+                <BotaoCalendario
+                  evento={{
+                    consultaId: c.id,
+                    titulo: `Consulta - ${c.profissional?.nome ?? 'MedAgenda'}`,
+                    inicio: c.inicio,
+                    fim: c.fim,
+                    local: c.consultorio?.endereco ?? c.consultorio?.nome ?? undefined,
+                    notas: `Unidade: ${c.consultorio?.nome ?? ''}\nProfissional: ${c.profissional?.nome ?? ''}\nAgendada pelo MedAgenda`,
+                  }}
+                />
+              )}
               {podeCancelar && (
                 <Pressable
                   onPress={() => cancelar(c)}
@@ -194,6 +214,7 @@ export default function ClienteInicio() {
                     {cancelandoId === c.id ? 'Cancelando...' : 'Cancelar consulta'}
                   </Text>
                 </Pressable>
+                
               )}
             </View>
           );
