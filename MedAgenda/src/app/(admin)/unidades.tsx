@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Button, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { BotaoAcao } from '../../components/BotaoAcao';
 import { FotoPicker } from '../../components/FotoPicker';
 import { FotoSegura } from '../../components/FotoSegura';
+
 import {
   atualizarConsultorio, criarConsultorio, definirAtivoConsultorio, excluirConsultorio,
 } from '../../services/admin';
@@ -24,7 +25,8 @@ export default function Unidades() {
   const [removerAtual, setRemoverAtual] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [lista, setLista] = useState<any[]>([]);
-
+  const [formAberto, setFormAberto] = useState(false);
+  const formY = useRef(0);
   async function carregar() {
     try {
       setLista(await listarConsultorios());
@@ -37,11 +39,18 @@ export default function Unidades() {
   function limpar() {
     setEditandoId(null); setNome(''); setEndereco(''); setDescricao('');
     setFoto(null); setFotoAtual(null); setPreview(null); setRemoverAtual(false);
+    setFormAberto(false);
   }
 
   function mudarFoto(uri: string | null) {
     setFoto(uri);
     if (!uri) { setPreview(null); setRemoverAtual(true); }
+  }
+
+  function abrirNovo() {
+    limpar();
+    setFormAberto(true);
+    setTimeout(() => scroll.current?.scrollTo({ y: formY.current, animated: true }), 100);
   }
 
   function iniciarEdicao(u: any) {
@@ -54,7 +63,8 @@ export default function Unidades() {
     setRemoverAtual(false);
     setPreview(null);
     if (u.foto_path) urlDaFoto(u.foto_path).then(setPreview);
-    scroll.current?.scrollTo({ y: 0, animated: true });
+    setFormAberto(true);
+    setTimeout(() => scroll.current?.scrollTo({ y: formY.current, animated: true }), 100);
   }
 
   async function salvar() {
@@ -130,54 +140,79 @@ export default function Unidades() {
   }
 
   return (
-    <ScrollView ref={scroll} contentContainerStyle={{ padding: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
-      <Text style={{ fontSize: 20, fontWeight: 'bold' }}>
-        {editandoId ? 'Editar unidade' : 'Nova unidade'}
-      </Text>
+  <ScrollView ref={scroll} contentContainerStyle={{ padding: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
+    <Text style={{ fontSize: 20, fontWeight: 'bold' }}>
+      Unidades cadastradas ({lista.length})
+    </Text>
 
-      <FotoPicker uri={foto ?? preview} onChange={mudarFoto} />
-      <TextInput placeholder="Nome da unidade" value={nome} onChangeText={setNome} style={input} />
-      <TextInput placeholder="Endereço" value={endereco} onChangeText={setEndereco} style={input} />
-      <TextInput
-        placeholder="Outra informação (opcional)" value={descricao} onChangeText={setDescricao}
-        multiline style={[input, { minHeight: 80, textAlignVertical: 'top' }]}
-      />
-      <Button
-        title={enviando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Cadastrar unidade'}
-        onPress={salvar} disabled={enviando}
-      />
-      {editandoId && <Button title="Cancelar edição" color="#6b7280" onPress={limpar} />}
+    {lista.length === 0 && (
+      <Text style={{ color: '#666' }}>Nenhuma unidade cadastrada ainda.</Text>
+    )}
 
-      <Text style={{ fontSize: 20, fontWeight: 'bold', marginTop: 24 }}>
-        Unidades cadastradas ({lista.length})
-      </Text>
-      {lista.map((u) => (
-        <View
-          key={u.id}
-          style={{
-            borderWidth: 1, borderColor: editandoId === u.id ? '#0a7ea4' : '#ddd',
-            borderRadius: 10, padding: 12, gap: 10, opacity: u.ativo ? 1 : 0.65,
-          }}
-        >
-          <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-            <FotoSegura path={u.foto_path ?? null} tamanho={52} redonda={false} icone="business" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold' }}>{u.nome}</Text>
-              <Text style={{ color: '#555' }}>{u.endereco}</Text>
-              {!u.ativo && <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: 'bold' }}>Desativada</Text>}
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <BotaoAcao titulo="Editar" onPress={() => iniciarEdicao(u)} />
-            <BotaoAcao
-              titulo={u.ativo ? 'Desativar' : 'Ativar'}
-              cor={u.ativo ? '#b45309' : '#15803d'}
-              onPress={() => alternarAtivo(u)}
-            />
-            <BotaoAcao titulo="Excluir" cor="#b91c1c" onPress={() => excluir(u)} />
+    {lista.map((u) => (
+      <View
+        key={u.id}
+        style={{
+          borderWidth: 1, borderColor: editandoId === u.id ? '#0a7ea4' : '#ddd',
+          borderRadius: 10, padding: 12, gap: 10, opacity: u.ativo ? 1 : 0.65,
+        }}
+      >
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          <FotoSegura path={u.foto_path ?? null} tamanho={52} redonda={false} icone="business" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: 'bold' }}>{u.nome}</Text>
+            <Text style={{ color: '#555' }}>{u.endereco}</Text>
+            {!u.ativo && <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: 'bold' }}>Desativada</Text>}
           </View>
         </View>
-      ))}
-    </ScrollView>
-  );
-}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <BotaoAcao titulo="Editar" onPress={() => iniciarEdicao(u)} />
+          <BotaoAcao
+            titulo={u.ativo ? 'Desativar' : 'Ativar'}
+            cor={u.ativo ? '#b45309' : '#15803d'}
+            onPress={() => alternarAtivo(u)}
+          />
+          <BotaoAcao titulo="Excluir" cor="#b91c1c" onPress={() => excluir(u)} />
+        </View>
+      </View>
+    ))}
+
+    {/* Botão no fim da lista */}
+    {!formAberto && (
+      <Pressable
+        onPress={abrirNovo}
+        style={{
+          marginTop: 8, padding: 14, borderRadius: 10, alignItems: 'center',
+          borderWidth: 1, borderStyle: 'dashed', borderColor: '#0a7ea4',
+        }}
+      >
+        <Text style={{ color: '#0a7ea4', fontWeight: 'bold' }}>+ Nova unidade</Text>
+      </Pressable>
+    )}
+
+    {/* Formulário: só aparece quando aberto */}
+    {formAberto && (
+      <View
+        onLayout={(e) => { formY.current = e.nativeEvent.layout.y; }}
+        style={{ gap: 12, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#ddd' }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: 'bold' }}>
+          {editandoId ? 'Editar unidade' : 'Nova unidade'}
+        </Text>
+
+        <FotoPicker uri={foto ?? preview} onChange={mudarFoto} />
+        <TextInput placeholder="Nome da unidade" value={nome} onChangeText={setNome} style={input} />
+        <TextInput placeholder="Endereço" value={endereco} onChangeText={setEndereco} style={input} />
+        <TextInput
+          placeholder="Outra informação (opcional)" value={descricao} onChangeText={setDescricao}
+          multiline style={[input, { minHeight: 80, textAlignVertical: 'top' }]}
+        />
+        <Button
+          title={enviando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Cadastrar unidade'}
+          onPress={salvar} disabled={enviando}
+        />
+        <Button title="Cancelar" color="#6b7280" onPress={limpar} />
+      </View>
+    )}
+  </ScrollView>
+  )};
